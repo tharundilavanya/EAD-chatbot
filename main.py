@@ -2,11 +2,20 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from chatwithAPI import chat
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="Automobile Shop AI Assistant",
     description="FastAPI backend for Gemini-powered automobile assistant",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 
 # Request body model
