@@ -3,6 +3,12 @@ import requests
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from google.api_core.exceptions import ResourceExhausted
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -11,10 +17,11 @@ api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
     raise ValueError("❌ GOOGLE_API_KEY not found in environment variables!")
 
-# Initialize Gemini model
+# Initialize Gemini model with retry configuration
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
-    temperature=0.7
+    temperature=0.7,
+    max_retries=2  # Limit retries to avoid long waits
 )
 
 # In-memory session storage
@@ -27,7 +34,11 @@ def fetch_api_data():
         response.raise_for_status()
         data = response.json()
         return data[:5]  # take first 5 items to keep context small
+    except requests.exceptions.RequestException as e:
+        logger.error(f"API fetch error: {str(e)}")
+        return [{"error": f"Failed to fetch product data: {str(e)}"}]
     except Exception as e:
+        logger.error(f"Unexpected error in fetch_api_data: {str(e)}")
         return [{"error": str(e)}]
 
 def get_or_create_session(session_id: str):
@@ -61,13 +72,34 @@ def get_or_create_session(session_id: str):
 
 def chat(session_id: str, user_input: str) -> str:
     """Main chat function with context memory and API data."""
-    session = get_or_create_session(session_id)
-    session["history"].append(HumanMessage(content=user_input))
+    try:
+        session = get_or_create_session(session_id)
+        session["history"].append(HumanMessage(content=user_input))
 
-    ai_msg: AIMessage = llm.invoke(session["history"])
-    session["history"].append(ai_msg)
-
-    return ai_msg.content
+        # Try to invoke the LLM with proper error handling
+        try:
+            ai_msg: AIMessage = llm.invoke(session["history"])
+            session["history"].append(ai_msg)
+            return ai_msg.content
+        
+        except ResourceExhausted as e:
+            logger.error(f"Google API quota exceeded: {str(e)}")
+            # Remove the last user message since we couldn't process it
+            session["history"].pop()
+            raise ValueError("QUOTA_EXCEEDED: Our AI service is currently experiencing high demand. Please try again in a minute.")
+        
+        except Exception as e:
+            logger.error(f"LLM invocation error: {str(e)}")
+            # Remove the last user message since we couldn't process it
+            session["history"].pop()
+            raise ValueError(f"AI_ERROR: Unable to process your request at this time. Please try again later.")
+    
+    except ValueError:
+        # Re-raise ValueError (our custom errors)
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in chat function: {str(e)}")
+        raise ValueError(f"SYSTEM_ERROR: An unexpected error occurred. Please try again.")
 
 # if __name__ == "__main__":
 #     print("🤖 Gemini Chat with API Context")

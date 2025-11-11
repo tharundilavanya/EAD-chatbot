@@ -1,0 +1,43 @@
+# Virtual environment
+venv/
+.venv/
+
+# Environment variables
+.env
+.env.*
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# VSCode settings
+.vscode/
+
+# IDE project settings
+.idea/
+*.iml
+
+# Build and distribution folders
+build/
+dist/
+*.egg-info/
+
+# Logs and runtime files
+*.log
+
+# Local database files
+*.sqlite3
+*.db
+
+# Pytest and coverage
+.coverage
+htmlcov/
+.cache/
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
