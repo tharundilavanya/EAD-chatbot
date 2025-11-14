@@ -4,6 +4,12 @@ import requests
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from google.api_core.exceptions import ResourceExhausted
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # 👉 RAG RETRIEVER
 from retriever import vector_search
@@ -15,10 +21,11 @@ api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
     raise ValueError("❌ GOOGLE_API_KEY not found in environment variables!")
 
-# Initialize Gemini model
+# Initialize Gemini model with retry configuration
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
-    temperature=0.7
+    temperature=0.7,
+    max_retries=2  # Limit retries to avoid long waits
 )
 
 # In-memory session storage
@@ -30,8 +37,12 @@ def fetch_api_data():
         response = requests.get("https://api.escuelajs.co/api/v1/products", timeout=10)
         response.raise_for_status()
         data = response.json()
-        return data[:5]  # only first 5 items
+        return data[:5]  # take first 5 items to keep context small
+    except requests.exceptions.RequestException as e:
+        logger.error(f"API fetch error: {str(e)}")
+        return [{"error": f"Failed to fetch product data: {str(e)}"}]
     except Exception as e:
+        logger.error(f"Unexpected error in fetch_api_data: {str(e)}")
         return [{"error": str(e)}]
 
 def get_or_create_session(session_id: str):
