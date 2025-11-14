@@ -34,13 +34,13 @@ sessions = {}
 def fetch_api_data():
     """Call external API once and return JSON data."""
     try:
-        response = requests.get("https://api.escuelajs.co/api/v1/products", timeout=10)
+        response = requests.get("http://localhost:8080/api/booking/available-slots", timeout=10)
         response.raise_for_status()
         data = response.json()
-        return data[:5]  # take first 5 items to keep context small
+        return data[:7]  # take first 5 items to keep context small
     except requests.exceptions.RequestException as e:
         logger.error(f"API fetch error: {str(e)}")
-        return [{"error": f"Failed to fetch product data: {str(e)}"}]
+        return [{"error": f"Failed to fetch available slots data: {str(e)}"}]
     except Exception as e:
         logger.error(f"Unexpected error in fetch_api_data: {str(e)}")
         return [{"error": str(e)}]
@@ -52,10 +52,13 @@ def get_or_create_session(session_id: str):
 
         system_context = (
             "You are an AI assistant for NITRO LINE Automobile Shop. "
-            "Answer user questions using the PDF knowledge base and external product API data provided.\n"
-            "Below is product data fetched from an external API:\n"
+            "Answer user questions primarily using the PDF knowledge base provided.\n"
+            "There is additional information about available service slots for vehicles.\n"
+            "Only provide the available slots to the user if they specifically ask about service availability, booking, or available days.\n"
+            "Do not mention the slots otherwise.\n"
+            "Available slots data (from API):\n"
             f"{api_data}\n"
-            "Use this data only when relevant to the question.\n"
+            "Use this information only when relevant to questions about scheduling or availability."
         )
 
         sessions[session_id] = {
