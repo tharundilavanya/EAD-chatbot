@@ -1,8 +1,24 @@
+fastapi
+uvicorn[standard]
+
 langchain
 langchain-google-genai
-python-dotenv
-fastapi
-uvicorn
-requests
-python-dotenv
+langchain-community
+
+pymongo
+pymongo[srv]
 pydantic>=2.0.0
+python-dotenv
+requests
+
+# For reading PDFs & chunking
+pypdf
+chromadb
+
+# Optional but recommended for embeddings
+sentence-transformers
+
+
+transformers
+torch
+pymongo
